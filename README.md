@@ -8,7 +8,7 @@ A Python-based simulation of a timing side-channel attack on DSS-style modular a
 
 - [Overview](#overview)
 - [Vulnerability Explained](#vulnerability-explained)
-- [Attack Methodology](#attack-methodology)
+- [Attack Steps](#attack-steps)
 - [Project Structure](#project-structure)
 - [Setup Instructions](#setup-instructions)
 - [Usage](#usage)
@@ -62,7 +62,7 @@ A secure implementation uses the built-in `%` operator (or a branchless Montgome
 
 ---
 
-## Attack Methodology
+## Attack Steps
 
 The attack proceeds in five steps:
 
@@ -137,7 +137,7 @@ Generates 5 000 timing samples, runs the full correlation sweep across all 65 52
 ```
 usage: attack.py [-h] [--key-bits BITS] [--samples N] [--noise STD]
                  [--q Q] [--save-dataset PATH] [--load-dataset PATH]
-                 [--no-plot] [--quiet]
+                 [--no-plot] [--quiet] [--normalize-timing]
 
 options:
   --key-bits BITS        Approximate key-space bit-length (default: 16)
@@ -148,6 +148,7 @@ options:
   --load-dataset PATH    Load an existing dataset instead of generating
   --no-plot              Skip generating visualisation plots
   --quiet                Suppress progress output
+  --normalize-timing     Normalize timing values before correlation
 ```
 
 ### Examples
@@ -182,15 +183,17 @@ python attack.py --no-plot --quiet
 [+] Timing histogram saved → plots/timing_histogram.png
 [*] Testing 65520 key candidates …
 [+] Recovered key  : 35645
-[+] True key       : 35645
-[+] Match          : ✓ CORRECT
+[+] Actual key     : 35645
+[+] Status         : SUCCESS
 [+] Best |corr|    : 1.000000
 [+] Correlation plot saved → plots/correlation_vs_guesses.png
 
 ============================================================
   Attack Complete
 ============================================================
-  Result : KEY FULLY RECOVERED  ✓
+  Actual key    : 35645
+  Recovered key : 35645
+  Status        : SUCCESS
 ============================================================
 ```
 
@@ -200,7 +203,7 @@ python attack.py --no-plot --quiet
 |---|---|
 | `plots/timing_histogram.png` | `plots/correlation_vs_guesses.png` |
 
-The histogram shows the non-uniform (bimodal / skewed) timing distribution that results from the variable-length reduction loop.  The correlation plot shows a sharp peak exactly at the true key value.
+The histogram shows the non-uniform (bimodal / skewed) timing distribution that results from the variable-length reduction loop. The correlation plot shows a sharp peak exactly at the actual key value.
 
 ---
 

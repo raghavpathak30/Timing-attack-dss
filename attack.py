@@ -126,6 +126,7 @@ def run_attack(
     q: int = DEFAULT_Q,
     verbose: bool = True,
     plot: bool = True,
+    normalize_timing: bool = False,
 ) -> int:
     """Execute the full correlation timing attack pipeline.
 
@@ -155,8 +156,18 @@ def run_attack(
         print(f"  Group order q      : {q}")
         print(f"  Dataset size       : {len(df)} samples")
         if secret_key is not None:
-            print(f"  True secret key    : {secret_key}")
+            print(f"  Actual key         : {secret_key}")
+        print(f"  Normalize timing   : {'ON' if normalize_timing else 'OFF'}")
         print("=" * 60 + "\n")
+
+    if normalize_timing:
+        timings = df["timing_ns"].astype(float)
+        std = timings.std()
+        if std > 0:
+            df = df.copy()
+            df["timing_ns"] = (timings - timings.mean()) / std
+        elif verbose:
+            print("[!] Timing normalization skipped (zero variance).")
 
     # --- Step 1: Visualise the timing distribution -------------------------
     if plot:
@@ -178,9 +189,9 @@ def run_attack(
         best_corr = correlations[recovered_key]
         print(f"\n[+] Recovered key  : {recovered_key}")
         if secret_key is not None:
-            print(f"[+] True key       : {secret_key}")
-            match = "✓ CORRECT" if recovered_key == secret_key else "✗ INCORRECT"
-            print(f"[+] Match          : {match}")
+            print(f"[+] Actual key     : {secret_key}")
+            status = "SUCCESS" if recovered_key == secret_key else "FAILED"
+            print(f"[+] Status         : {status}")
         print(f"[+] Best |corr|    : {abs(best_corr):.6f}")
 
     # --- Step 5: Plot correlation landscape --------------------------------
@@ -360,6 +371,12 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Suppress progress output.",
     )
+    parser.add_argument(
+        "--normalize-timing",
+        action="store_true",
+        default=False,
+        help="Normalize timing values before correlation (optional).",
+    )
 
     return parser.parse_args()
 
@@ -371,6 +388,7 @@ def main() -> None:
     verbose = not args.quiet
     plot = not args.no_plot
     q = args.q
+    normalize_timing = args.normalize_timing
 
     # ------------------------------------------------------------------
     # Dataset acquisition
@@ -400,7 +418,14 @@ def main() -> None:
     # ------------------------------------------------------------------
     # Run the attack
     # ------------------------------------------------------------------
-    recovered = run_attack(df, secret_key=secret_key, q=q, verbose=verbose, plot=plot)
+    recovered = run_attack(
+        df,
+        secret_key=secret_key,
+        q=q,
+        verbose=verbose,
+        plot=plot,
+        normalize_timing=normalize_timing,
+    )
 
     # ------------------------------------------------------------------
     # Final summary
@@ -410,10 +435,12 @@ def main() -> None:
         print("  Attack Complete")
         print("=" * 60)
         if secret_key is not None:
-            if recovered == secret_key:
-                print("  Result : KEY FULLY RECOVERED  ✓")
-            else:
-                print(f"  Result : Partial recovery — got {recovered}, expected {secret_key}")
+            print(f"  Actual key    : {secret_key}")
+            print(f"  Recovered key : {recovered}")
+            print(
+                "  Status        : "
+                f"{'SUCCESS' if recovered == secret_key else 'FAILED'}"
+            )
         else:
             print(f"  Result : Recovered key candidate = {recovered}")
         print("=" * 60 + "\n")
